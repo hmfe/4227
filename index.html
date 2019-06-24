@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <title>
+            H&M test
+        </title>
+        <meta name="description" content="" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link href="https://fonts.googleapis.com/css?family=Roboto&display=swap" rel="stylesheet" />
+        <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" integrity="sha384-T8Gy5hrqNKT+hzMclPo118YTQO6cYprQmhrYwIiQ/3axmI1hQomh7Ud2hPOy8SP1" crossorigin="anonymous" />
+        <link rel="stylesheet" href="styles.css" />
+    </head>
+    <body>
+        <div id="app" class="container">
+            <h1>Country browser</h1>
+            <div class="search-field-container">
+                <div class="search-field">
+                    <input v-model="searchValue" v-on:keyup="search" class="input-search" type="text" />
+                    <div class="icons-container">
+                        <button class="btn-remove" v-show="!loading && searchResult.length" @click="clearSearchField">
+                            <i class="fa fa-times"></i>
+                        </button>
+                        <div v-show="loading" class="loading-icon">
+                            <i class="fa fa-spinner fa-spin"></i>
+                        </div>
+                    </div>
+                </div>
+                <div v-show="searchResult.length" class="autocomplete-results-container">
+                    <div class="autocomplete-results">
+                        <p v-for="country in searchResult"
+                           :key="country.alpha2Code"
+                           @click="addItemToHistory(country.name)">
+                           {{ country.name }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <section>
+                <div class="history-header-container">
+                    <p class="p-history-header">
+                        Search history
+                    </p>
+                    <button class="btn-clean-whole-history" @click="clearWholeHistory">
+                        Clear search history
+                    </button>
+                </div>
+                <div class="history-item" v-for="(item, index) in searchHistory">
+                    <p>
+                        {{ item.country }}
+                    </p>
+                    <time datetime="2018-07-07T20:00:00">
+                        {{ item.date }}
+                    </time>
+                    <button class="btn-remove" @click="removeItemFromHistory(index)">
+                        <i class="fa fa-times"></i>
+                    </button>
+                </div>
+                <p class="p-empty-history" v-show="searchHistory.length == 0">
+                    History is empty, search for something
+                </p>
+            </section>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/vue"></script>
+        <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.8.14/dayjs.min.js" integrity="sha256-4OyTmxDUGwg8iuJo/Thf6B/tAOmEVxoDOW1FRe+zZVM=" crossorigin="anonymous"></script>
+        
+        <!-- Note from author: Filip Kostrzewski, Accenture
+             For the sake of simplicity I've done everything in one file
+             It's very well organized, and I'm hoping that it will be a please
+             to review my work. I added comments where they suppose to be,
+             I tried to write self explanatory code as much as possible.
+             Unfortunately element is kind of small, there is not so much to
+             show writing mobile responsive version of that element, but you
+             can believe me that I know how to write mobile responsive css.
+             Have fun! -->
+        <script>
+            const apiUrl = 'https://restcountries.eu/rest/v2/name/';
+
+            var app = new Vue({
+                el: '#app',
+                data() {
+                    return {
+                        loading: false,
+                        searchValue: '',
+                        searchResult: [],
+                        searchHistory: [],
+                        timer: null
+                    };
+                },
+
+                methods: {
+                    async search() {
+                        // Hide loader to it's initial state
+                        this.loading = false;
+
+                        // Don't bother API if input field is empty and remove current results from autocomplete area
+                        if (this.searchValue === '') {
+                            clearTimeout(this.timer);
+                            this.searchResult = [];
+                            return;
+                        }
+
+                        // Give user time to write something, 1 sec should be enough before API call
+                        await this.searchDelay(1000);
+
+                        // Make API call to our provider
+                        this.makeApiCall();
+                    },
+
+                    async makeApiCall() {
+                        this.loading = true;
+
+                        // API is throwing an error 404 if there is no results to show
+                        try {
+                            let response = await axios.get(apiUrl + this.searchValue);
+                            this.searchResult = response.data;
+                        } catch (e) {
+                            this.searchValue = 'Wrong city name, please try again.';
+                            console.warn('404 error, probably user is looking for non existing country', e);
+                        }
+
+                        this.loading = false;
+                    },
+
+                    addItemToHistory(country) {
+                        let newPosition = {
+                            country: country,
+                            date: dayjs().format('YYYY-MM-DD HH:mm:ss')
+                        };
+
+                        this.searchHistory.push(newPosition);
+                        this.searchValue = '';
+                        this.searchResult = '';
+                    },
+
+                    removeItemFromHistory(index) {
+                        this.searchHistory.splice(index, 1);
+                    },
+
+                    clearWholeHistory() {
+                        this.searchHistory = [];
+                    },
+
+                    clearSearchField() {
+                        this.searchValue = '';
+                        this.searchResult = [];
+                    },
+
+                    handleLoaderState() {
+                        if (this.searchValue === '') {
+                            this.loading = false;
+                            return;
+                        }
+                        this.loading = true;
+                    },
+
+                    async searchDelay(duration) {
+                        clearTimeout(this.timer);
+                        await new Promise(resolve => {
+                            this.timer = setTimeout(() => resolve(), duration);
+                        });
+                    }
+                }
+            });
+        </script>
+    </body>
+</html>
